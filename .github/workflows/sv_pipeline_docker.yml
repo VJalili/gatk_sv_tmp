@@ -233,9 +233,10 @@ jobs:
           git push
           
   deploy:
+    name: deploy
     runs-on: ubuntu-20.04
-    name: deploy 
     environment: pushDockers
+    if: github.event_name == 'push'
     strategy:
       matrix:
         python-version: ['3.8']
