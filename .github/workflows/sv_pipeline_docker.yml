@@ -214,6 +214,7 @@ jobs:
       - name: TEST
         run: |
           gcloud auth configure-docker -q
+          
         
       - name: Update dockers.json
         if: github.event_name != 'pull_request'
