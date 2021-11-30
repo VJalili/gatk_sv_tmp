@@ -26,6 +26,7 @@ jobs:
   test_build:
     runs-on: ubuntu-20.04
     name: Build GATK-SV Pipeline Docker Images
+    environment: pushDockers
     env:
       GITHUB_CONTEXT: ${{ toJson(github) }}
     strategy:
@@ -201,7 +202,7 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@master
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ secrets.pushDockers.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_GCR_SA_KEY }}
           # Exports the path to Default Application Credentials 
           # as the environment variable GOOGLE_APPLICATION_CREDENTIALS 
