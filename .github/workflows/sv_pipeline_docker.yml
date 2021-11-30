@@ -1,0 +1,225 @@
+name: Build Docker Images
+
+on:
+  push:
+    branches:
+      - master
+      - dummy-master
+    paths:
+      - 'src/**'
+      - 'dockerfiles/**'
+      - 'scripts/docker/build_docker.py'
+      - '.github/workflows/sv_pipeline_docker.yml'
+  pull_request:
+    branches:
+      - master
+      - dummy-master
+    paths:
+      - 'src/**'
+      - 'dockerfiles/**'
+      - 'scripts/docker/build_docker.py'
+      - '.github/workflows/sv_pipeline_docker.yml'
+
+jobs:
+  test_build:
+    runs-on: ubuntu-20.04
+    name: Build GATK-SV Pipeline Docker Images
+    env:
+      GITHUB_CONTEXT: ${{ toJson(github) }}
+    strategy:
+      matrix:
+        python-version: ['3.8']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          # By default, this checks out only the current commit;
+          # however, since a diff between the current commit and
+          # the base commit is required to determined which docker
+          # images to rebuild, we use the following to check out
+          # the complete git history.
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install termcolor
+
+      - name: Determine Commit SHAs
+        id: commit_sha
+        # This action determines the SHA of two commits:
+        # - BASE (BASE_SHA): The commit SHA of the base branch (e.g.,
+        #   broadinstitute/gatk-sv:master) which the feature branch targets.
+        # - HEAD (HEAD_SHA): The commit SHA of the latest commit on the
+        #   feature branch.
+        #
+        # In the following example, BASE_SHA=B and HEAD_SHA=Z
+        #
+        #     	    X---Y---Z     feature
+        #          /         \
+        #     A---B---C---D---E   master
+        #
+        # 'E' is the merge commit (e.g., 'Merge pull request #0').
+        #
+        # This action can be invoked as a result of (a) pushing commits X,
+        # Y, or Z, or (b) pushing merge commit E (i.e., merging the PR).
+        # Depending on (a) and (b) the commit SHAs are determined differently.
+        # In case of (a), the commit SHAs are extracted from the
+        # 'event.pull_request' key in the github's context JSON. In case of
+        # (b), the commit SHAs are extracted from the list of commits recorded
+        # under the 'event' key.
+        #
+        # Note: Github's context JSON is printed in the action's debug page.
+        #
+        run: |
+          echo "::debug::EVENT_NAME: ${{ github.event_name }}"
+          if [[ ${{ github.event_name }} == "pull_request" ]]; then
+            BASE_SHA=${{ github.event.pull_request.base.sha }}
+            HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          else
+            BASE_SHA=${{ github.event.before }}
+            HEAD_SHA=$(echo "$GITHUB_CONTEXT" | jq '.event.commits[].id' | tail -2 | head -1 | sed 's/\"//g')
+          fi
+
+          echo "::debug::BASE_SHA: $BASE_SHA"
+          echo "::debug::HEAD_SHA: $HEAD_SHA"
+
+          # Avail the determined commit SHAs to other steps.
+          echo "::set-output name=BASE_SHA::$BASE_SHA"
+          echo "::set-output name=HEAD_SHA::$HEAD_SHA"
+
+      - name: Compose Image Tag
+        id: image_tag
+        # This step composes a tag to be used for all the images created by
+        # the build_docker.py script. The tag follows the following template:
+        #
+        #   DATE-HEAD_SHA_8
+        #
+        # where 'DATE' is YYYYMMDD extracted from the time stamp of the last
+        # commit on the feature branch (HEAD), and 'HEAD_SHA_8' is the first
+        # eight letters of its commit SHA.
+        run: |
+          COMMIT_SHA=${{ steps.commit_sha.outputs.HEAD_SHA }}
+
+          # Extract the time stamp of COMMIT_SHA in YYYYMMDD format.
+          # See git-show documentation available at:
+          # http://schacon.github.io/git/git-show
+          DATE=$(git show -s --format=%ad --date=format:'%Y%m%d' $COMMIT_SHA)
+
+          IMAGE_TAG=$DATE-${COMMIT_SHA::8}
+          echo "::debug::Image tag: $IMAGE_TAG"
+          echo "::set-output name=IMAGE_TAG::$IMAGE_TAG"
+
+      - name: Determine Target Images
+        id: target_images
+        # This step determines the target images to be rebuilt based on the
+        # files changed between the HEAD and BASE commits (see the
+        # 'Determine Commit SHAs' step). For instance, if the commit changes
+        # the `dockerfiles/sv-base/Dockerfile`, then the `sv-base` docker
+        # image and all its dependencies are rebuilt.
+        #
+        # This step first gets the HEAD and BASE commit SHAs from the
+        # 'commit_sha' step. Then uses `git diff` to determine the files
+        # changed between the commits. Based on the changed files, it
+        # determines a list of docker images to be rebuilt. Finally, it
+        # stores the determined docker images in $TARGETS variable that can
+        # be accessed in other steps.
+        run: |
+          BASE_SHA=${{ steps.commit_sha.outputs.BASE_SHA }}
+          HEAD_SHA=${{ steps.commit_sha.outputs.HEAD_SHA }}
+
+          # A list of all the files changed in HEAD commit w.r.t BASE commit.
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA $HEAD_SHA)
+
+          # Add a given target image name to the TARGETS
+          # array if it is not already in the array.
+          TARGETS=()
+          try_add_target() {
+            if [[ ! " ${TARGETS[*]} " =~ $1 ]]; then
+              TARGETS+=($1)
+            fi
+          }
+
+          for i in "${CHANGED_FILES[@]}"
+          do
+            if [[ $i == *".github/workflows/sv_pipeline_docker.yml"* ]]; then
+              # A change to this file may impact how images are built,
+              # hence, if this file is changed, all the images are rebuilt.
+              TARGETS=("all")
+              break
+            elif [[ $i == *"src/svtk"* ||
+                  $i == *"src/sv-pipeline"* ||
+                  $i == *"src/svtest"* ||
+                  $i == *"src/svqc"* ]]; then
+              try_add_target "sv-pipeline"
+              try_add_target "sv-pipeline-base"
+              try_add_target "sv-pipeline-children-r"
+            elif [[ $i == *"src/RdTest"* ]]; then
+              try_add_target "sv-pipeline-rdtest"
+            elif [[ $i == *"src/WGD"* ]]; then
+              try_add_target "sv-pipeline-qc"
+              try_add_target "cnmops"
+            fi
+
+            # Rebuild the docker image of the Dockerfiles specified in
+            # the `D` array. Use regular expression to extract the target
+            # image from the file path. For instance, if
+            # i = dockerfiles/delly/Dockerfile, then M="delly".
+            if [[ $i =~ (dockerfiles/)([^,]*)(/Dockerfile) ]]; then
+              M="${BASH_REMATCH[2]}"
+              D=("delly" "manta" "wham" "sv-base-mini" "sv-base" "samtools-cloud")
+              if [[ " ${D[*]} " =~ $M ]]; then
+                try_add_target $M
+              fi
+            fi
+          done
+
+          # Join the determined targets in a space-delimited string.
+          TARGETS=$(IFS=' '; echo "${TARGETS[*]}")
+
+          # Print some debugging information.
+          echo "::debug::Docker images to rebuild: $TARGETS"
+          echo "::debug::Changed files:"
+          for f in "${CHANGED_FILES[@]}"; do
+            echo "::debug:: - $f"
+          done
+
+          # Set the output of this step so it can be accessed in other steps.
+          echo "::set-output name=TARGETS::$TARGETS"
+      - name: Run build_docker.py
+        run: |
+          cd ./scripts/docker/
+          # python build_docker.py --targets ${{ steps.target_images.outputs.TARGETS }} --image-tag ${{ steps.image_tag.outputs.IMAGE_TAG }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_GCR_SA_KEY }}
+          # Exports the path to Default Application Credentials 
+          # as the environment variable GOOGLE_APPLICATION_CREDENTIALS 
+          # to be available in later steps. Google Cloud services 
+          # automatically use this environment variable to find credentials.
+          # xref: https://github.com/google-github-actions/setup-gcloud#inputs
+          export_default_credentials: true
+          
+      - name: Use gcloud CLI
+        run: gcloud info
+        
+      - name: TEST
+        run: |
+          gcloud auth configure-docker -q
+        
+      - name: Update dockers.json
+        if: github.event_name != 'pull_request'
+        run: |          
+          echo "test" >> ./input_values/dockers.json
+          git config --global user.name 'aaaaaaaaaaaaa'
+          git config --global user.email 'aaaaaaaaaaaaa@users.noreply.github.com'
+          git commit -am "Automated report"
+          git push
