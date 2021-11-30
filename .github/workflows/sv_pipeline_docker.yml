@@ -216,8 +216,7 @@ jobs:
       - name: TEST
         run: |
           gcloud auth configure-docker -q
-          
-          
+                   
           
           
         
