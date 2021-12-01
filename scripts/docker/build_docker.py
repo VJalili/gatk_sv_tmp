@@ -42,6 +42,9 @@ class ProjectBuilder:
 
     def __init__(self, project_arguments, launch_script_path=this_script_path):
         # Todo: we can also check auth to push to GCR
+        print("\n----------------")
+        print(os.environ.get("IN_GITHUB_ACTIONS"))
+        print("----------------\n")
         if project_arguments.gcr_project is not None:
             os.system("docker login")
 
