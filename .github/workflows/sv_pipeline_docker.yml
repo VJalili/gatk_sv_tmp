@@ -263,7 +263,7 @@ jobs:
         # experimental features are enabled, hence the features are enabled
         # in this flag.
         run: |
-          gcloud auth configure-docker us.gcr.io
+          gcloud auth configure-docker
           tmp=$(mktemp)
           sudo jq '.+{experimental:true}' /etc/docker/daemon.json > "$tmp"
           sudo mv "$tmp" /etc/docker/daemon.json
