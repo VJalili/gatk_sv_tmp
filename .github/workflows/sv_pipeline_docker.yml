@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - main
     paths:
       - 'src/**'
       - 'dockerfiles/**'
@@ -12,6 +13,7 @@ on:
   pull_request:
     branches:
       - master
+      - main
     paths:
       - 'src/**'
       - 'dockerfiles/**'
@@ -205,7 +207,8 @@ jobs:
       - name: Run build_docker.py
         run: |
           cd ./scripts/docker/
-          python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
+          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }}
+          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
 
   publish_job:
     # This job first configures gcloud with the authentication of a
@@ -265,4 +268,5 @@ jobs:
       - name: Build and Publish Docker Images
         run: |
           cd ./scripts/docker/
-          python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
+          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
+          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
