@@ -23,15 +23,17 @@ on:
       - '.github/workflows/sv_pipeline_docker.yml'
 
 jobs:
-  test_build:
+  build_args:
     runs-on: ubuntu-20.04
-    name: Build GATK-SV Pipeline Docker Images
-    #environment: pushDockers
+    name: Determine Build Args
     env:
       GITHUB_CONTEXT: ${{ toJson(github) }}
     strategy:
       matrix:
         python-version: ['3.8']
+    outputs:
+      target_images: ${{ steps.target_images.outputs.TARGETS }}
+      images_tag: ${{ steps.image_tag.outputs.IMAGE_TAG }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -193,44 +195,49 @@ jobs:
           done
 
           # Set the output of this step so it can be accessed in other steps.
-          echo "::set-output name=TARGETS::$TARGETS"
-      - name: Run build_docker.py
-        run: |
-          cd ./scripts/docker/
-          # python build_docker.py --targets ${{ steps.target_images.outputs.TARGETS }} --image-tag ${{ steps.image_tag.outputs.IMAGE_TAG }}
-
-      - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@master
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_GCR_SA_KEY }}
-          # Exports the path to Default Application Credentials 
-          # as the environment variable GOOGLE_APPLICATION_CREDENTIALS 
-          # to be available in later steps. Google Cloud services 
-          # automatically use this environment variable to find credentials.
-          # xref: https://github.com/google-github-actions/setup-gcloud#inputs
-          export_default_credentials: true
+          # echo "::set-output name=TARGETS::$TARGETS"
+          echo "::set-output name=sv-pipeline-base"
           
+  build:
+    runs-on: ubuntu-20.04
+    name: Test Build (pull-request)
+    if: github.event_name != 'pull_request'
+    needs: build_args
+    env:
+      GITHUB_CONTEXT: ${{ toJson(github) }}
+    strategy:
+      matrix:
+        python-version: ['3.8']
+    outputs:
+      target_images: ${{ steps.target_images.outputs.TARGETS }}
+      images_tag: ${{ steps.image_tag.outputs.IMAGE_TAG }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          # By default, this checks out only the current commit;
+          # however, since a diff between the current commit and
+          # the base commit is required to determined which docker
+          # images to rebuild, we use the following to check out
+          # the complete git history.
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install termcolor
       - name: Use gcloud CLI
         run: gcloud info
         
-      - name: TEST
+      - name: Run build_docker.py
         run: |
-          gcloud auth configure-docker -q
-              
-              
-              
-          
-          
-        
-      - name: Update dockers.json
-        if: github.event_name != 'pull_request'
-        run: |          
-          echo "test" >> ./input_values/dockers.json
-          git config --global user.name 'aaaaaabbbbbaaaaaaa'
-          git config --global user.email 'aaaaaabbbbbaaaaaaa@users.noreply.github.com'
-          git commit -am "Automated report"
-          git push
+          cd ./scripts/docker/
+          python build_docker.py --targets ${{ needs.build_args.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
   deploy:
     name: deploy
@@ -259,5 +266,15 @@ jobs:
       - name: TEST
         run: |
           gcloud auth configure-docker -q
+          
+        
+      - name: Update dockers.json
+        if: github.event_name != 'pull_request'
+        run: |          
+          echo "test" >> ./input_values/dockers.json
+          git config --global user.name 'aaaaaabbbbbaaaaaaa'
+          git config --global user.email 'aaaaaabbbbbaaaaaaa@users.noreply.github.com'
+          git commit -am "Automated report"
+          git push
     
     
