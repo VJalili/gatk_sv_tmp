@@ -23,7 +23,7 @@ on:
       - '.github/workflows/sv_pipeline_docker.yml'
 
 jobs:
-  build_args:
+  build_args_job:
     runs-on: ubuntu-20.04
     name: Determine Build Args
     env:
@@ -199,9 +199,9 @@ jobs:
           
   build:
     runs-on: ubuntu-20.04
-    name: Test Build (pull-request)
+    name: Test Build
     if: github.event_name == 'pull_request'
-    needs: build_args
+    needs: build_args_job
     env:
       GITHUB_CONTEXT: ${{ toJson(github) }}
     strategy:
@@ -236,16 +236,17 @@ jobs:
       - name: Run build_docker.py
         run: |
           cd ./scripts/docker/
-          echo ${{ needs.build_args.outputs.target_images }}
+          echo ${{ needs.build_args_job.outputs.target_images }}
           
-          python build_docker.py --targets sv-pipeline-base --image-tag ${{ needs.build_args.outputs.images_tag }}
-          # python build_docker.py --targets ${{ needs.build_args.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
+          #python build_docker.py --targets sv-pipeline-base --image-tag ${{ needs.build_args_job.outputs.images_tag }}
+          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
-  deploy:
-    name: Publish Images
+  publish:
+    name: Publish
     runs-on: ubuntu-20.04
     environment: pushDockers
     if: github.event_name == 'push'
+    needs: build_args_job
     strategy:
       matrix:
         python-version: ['3.8']
