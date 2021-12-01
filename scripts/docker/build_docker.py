@@ -222,8 +222,7 @@ class ImageBuilder:  # class for building and pushing a single image
 
         will_push = 0 != len(self.remote_docker_repos) and any(
             e is not None for e in self.remote_docker_repos)
-        # docker_build_command += "--squash . " if will_push else ". "
-        docker_build_command += ". "
+        docker_build_command += "--squash . " if will_push else ". "
 
         # build and time it
         print(docker_build_command)

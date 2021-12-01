@@ -250,17 +250,12 @@ jobs:
           export_default_credentials: true
 
       - name: Configure Docker using gcloud
-        run: |
-          gcloud auth configure-docker
-          ls /etc/docker/
-          cat /etc/docker/daemon.json
-          echo '{"experimental": true}' | sudo tee -a /etc/docker/daemon.json
-          cat /etc/docker/daemon.json
+        run: gcloud auth configure-docker
 
       - name: Build and Publish Docker Images
         run: |
           cd ./scripts/docker/
-          echo '{"experimental": true}' | sudo tee -a /etc/docker/daemon.json
+          sudo bash -c 'echo "{\"experimental\": true}" >> /etc/docker/daemon.json'
           python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
           # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
