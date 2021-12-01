@@ -28,9 +28,6 @@ jobs:
     name: Determine Build Args
     env:
       GITHUB_CONTEXT: ${{ toJson(github) }}
-    strategy:
-      matrix:
-        python-version: ['3.8']
     outputs:
       target_images: ${{ steps.target_images.outputs.TARGETS }}
       images_tag: ${{ steps.image_tag.outputs.IMAGE_TAG }}
@@ -44,16 +41,6 @@ jobs:
           # images to rebuild, we use the following to check out
           # the complete git history.
           fetch-depth: 0
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install termcolor
 
       - name: Determine Commit SHAs
         id: commit_sha
