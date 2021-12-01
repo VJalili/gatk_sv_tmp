@@ -230,7 +230,7 @@ jobs:
   publish_job:
     name: Publish
     runs-on: ubuntu-20.04
-    environment: pushDockers
+    environment: Deploy
     if: github.event_name == 'push'
     needs: build_args_job
     strategy:
