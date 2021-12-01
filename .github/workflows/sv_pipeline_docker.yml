@@ -250,9 +250,6 @@ jobs:
           # xref: https://github.com/google-github-actions/setup-gcloud#inputs
           export_default_credentials: true
 
-      - name: test
-        run: gcloud auth configure-docker
-
       - name: Configure Docker using gcloud
         # This step uses gcloud to configure docker credentials to access GCR
         # using a service account.
