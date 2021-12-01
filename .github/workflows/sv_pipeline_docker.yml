@@ -186,7 +186,7 @@ jobs:
           
   build_job:
     runs-on: ubuntu-20.04
-    name: Test Build
+    name: Test Images Build
     if: github.event_name == 'pull_request'
     needs: build_args_job
     strategy:
@@ -211,7 +211,7 @@ jobs:
           cd ./scripts/docker/
           echo ${{ needs.build_args_job.outputs.target_images }}
           
-          #python build_docker.py --targets sv-pipeline-base --image-tag ${{ needs.build_args_job.outputs.images_tag }}
+          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }}
           # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
   publish_job:
