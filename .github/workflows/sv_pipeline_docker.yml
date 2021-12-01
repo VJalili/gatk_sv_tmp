@@ -257,6 +257,10 @@ jobs:
           cd ./scripts/docker/
           cat /etc/docker/daemon.json
           echo "-------------------------------"
+          sudo jq '.+{\"experimental\":true}|.' /etc/docker/daemon.json
+          echo "-------------------------------"
+          cat /etc/docker/daemon.json
+          echo "-------------------------------"
           #sudo bash -c 'echo "{\"experimental\": true}" >> /etc/docker/daemon.json'
           sudo bash -c 'echo "{ "cgroup-parent": "/actions_job","experimental":true}" > /etc/docker/daemon.json'
           sudo systemctl restart docker.service
