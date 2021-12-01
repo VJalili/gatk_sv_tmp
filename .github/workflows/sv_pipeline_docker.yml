@@ -256,6 +256,7 @@ jobs:
         run: |
           cd ./scripts/docker/
           sudo bash -c 'echo "{\"experimental\": true}" >> /etc/docker/daemon.json'
+          sudo systemctl restart docker.service
           python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
           # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
