@@ -257,8 +257,10 @@ jobs:
           cd ./scripts/docker/
           cat /etc/docker/daemon.json
           echo "-------------------------------"
-          sudo jq '.+{\"experimental\":true}|.' /etc/docker/daemon.json
-          echo "-------------------------------"
+          tmp=$(mktemp)
+          sudo jq '.+{experimental:true}' /etc/docker/daemon.json > "$tmp" && mv "$tmp" /etc/docker/daemon.json
+          #sudo jq '.+{\"experimental\":true}|.' /etc/docker/daemon.json
+          #echo "-------------------------------"
           cat /etc/docker/daemon.json
           echo "-------------------------------"
           #sudo bash -c 'echo "{\"experimental\": true}" >> /etc/docker/daemon.json'
