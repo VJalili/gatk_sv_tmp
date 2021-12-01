@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - master
-      - main
-      - dummy-master
     paths:
       - 'src/**'
       - 'dockerfiles/**'
@@ -14,8 +12,6 @@ on:
   pull_request:
     branches:
       - master
-      - main
-      - dummy-master
     paths:
       - 'src/**'
       - 'dockerfiles/**'
@@ -183,7 +179,7 @@ jobs:
 
           # Set the output of this step so it can be accessed in other steps.
           echo "::set-output name=TARGETS::$TARGETS"
-          
+
   build_job:
     runs-on: ubuntu-20.04
     name: Test Images Build
@@ -205,16 +201,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install termcolor
-        
+
       - name: Run build_docker.py
         run: |
           cd ./scripts/docker/
-          echo ${{ needs.build_args_job.outputs.target_images }}
-          
-          #python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }}
-          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
-          
+          python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
+
   publish_job:
+    # This job first configures gcloud with the authentication of a
+    # service account. It then uses gcloud to configure the docker
+    # credentials. Finally, it rebuilds the docker images (targets are
+    # determined by the `build_args_job`) and pushes them to GCR.
     name: Publish
     runs-on: ubuntu-20.04
     environment: Deploy
@@ -250,6 +247,14 @@ jobs:
           export_default_credentials: true
 
       - name: Configure Docker using gcloud
+        # This step uses gcloud to configure docker credentials to access GCR
+        # using a service account.
+        # See: https://cloud.google.com/container-registry/docs/advanced-authentication
+        #
+        # The build_docker.py uses the `--squash` flag when building the
+        # images to be pushed to GCR. This flag is only available when
+        # experimental features are enabled, hence the features are enabled
+        # in this flag.
         run: |
           gcloud auth configure-docker
           tmp=$(mktemp)
@@ -260,23 +265,4 @@ jobs:
       - name: Build and Publish Docker Images
         run: |
           cd ./scripts/docker/
-          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
-          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
-          
-
-        
-      - name: TEST
-        run: |
-          gcloud auth configure-docker -q
-          
-        
-      - name: Update dockers.json
-        if: github.event_name != 'pull_request'
-        run: |          
-          echo "test" >> ./input_values/dockers.json
-          git config --global user.name 'aaaaaabbbbbaaaaaaa'
-          git config --global user.email 'aaaaaabbbbbaaaaaaa@users.noreply.github.com'
-          git commit -am "Automated report"
-          git push
-    
-    
+          python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
