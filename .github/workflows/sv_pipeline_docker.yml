@@ -211,7 +211,7 @@ jobs:
           cd ./scripts/docker/
           echo ${{ needs.build_args_job.outputs.target_images }}
           
-          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }}
+          #python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }}
           # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
   publish_job:
@@ -237,23 +237,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install termcolor
 
-      - name: Build and Publish Docker Images
-        run: |
-          cd ./scripts/docker/
-          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
-          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
-
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@master
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_GCR_SA_KEY }}
-          # Exports the path to Default Application Credentials 
-          # as the environment variable GOOGLE_APPLICATION_CREDENTIALS 
-          # to be available in later steps. Google Cloud services 
+          # Exports the path to Default Application Credentials
+          # as the environment variable GOOGLE_APPLICATION_CREDENTIALS
+          # to be available in later steps. Google Cloud services
           # automatically use this environment variable to find credentials.
           # xref: https://github.com/google-github-actions/setup-gcloud#inputs
           export_default_credentials: true
+
+      - name: Build and Publish Docker Images
+        run: |
+          cd ./scripts/docker/
+          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
+          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
       - name: Use gcloud CLI
         run: gcloud info
