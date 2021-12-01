@@ -195,8 +195,7 @@ jobs:
           done
 
           # Set the output of this step so it can be accessed in other steps.
-          # echo "::set-output name=TARGETS::$TARGETS"
-          echo "::set-output name=sv-pipeline-base"
+          echo "::set-output name=TARGETS::$TARGETS"
           
   build:
     runs-on: ubuntu-20.04
@@ -237,7 +236,10 @@ jobs:
       - name: Run build_docker.py
         run: |
           cd ./scripts/docker/
-          python build_docker.py --targets ${{ needs.build_args.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
+          echo ${{ needs.build_args.outputs.target_images }}
+          
+          python build_docker.py --targets sv-pipeline-base --image-tag ${{ needs.build_args.outputs.images_tag }}
+          # python build_docker.py --targets ${{ needs.build_args.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
   deploy:
     name: Publish Images
