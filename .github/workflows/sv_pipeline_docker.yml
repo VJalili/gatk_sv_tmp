@@ -201,7 +201,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     name: Test Build (pull-request)
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'pull_request'
     needs: build_args
     env:
       GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -240,7 +240,7 @@ jobs:
           python build_docker.py --targets ${{ needs.build_args.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
           
   deploy:
-    name: deploy
+    name: Publish Images
     runs-on: ubuntu-20.04
     environment: pushDockers
     if: github.event_name == 'push'
