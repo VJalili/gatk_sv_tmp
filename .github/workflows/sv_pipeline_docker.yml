@@ -224,6 +224,25 @@ jobs:
       matrix:
         python-version: ['3.8']
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install termcolor
+
+      - name: Build and Publish Docker Images
+        run: |
+          cd ./scripts/docker/
+          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
+          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
+
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@master
         with:
