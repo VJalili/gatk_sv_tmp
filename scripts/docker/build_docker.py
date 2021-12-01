@@ -45,8 +45,8 @@ class ProjectBuilder:
         print("\n----------------")
         print(os.environ.get("IN_GITHUB_ACTIONS"))
         print("----------------\n")
-        if project_arguments.gcr_project is not None:
-            os.system("docker login")
+        # if project_arguments.gcr_project is not None:
+        #     os.system("docker login")
 
         self.project_arguments = project_arguments
         self.launch_script_path = launch_script_path
