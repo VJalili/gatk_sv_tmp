@@ -244,12 +244,13 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_GCR_SA_KEY }}
-          # Exports the path to Default Application Credentials
-          # as the environment variable GOOGLE_APPLICATION_CREDENTIALS
-          # to be available in later steps. Google Cloud services
-          # automatically use this environment variable to find credentials.
           # xref: https://github.com/google-github-actions/setup-gcloud#inputs
-          # export_default_credentials: true
+          # If you need to set `export_default_credentials: true`
+          # make sure to pass the `--disable-git-protect` flag to
+          # build_docker.py; because the setting export_default_credentials
+          # to true will cause creating an untracked file in the root of
+          # GATK-SV cloned directory which will cause build_docker.py to
+          # raise an exception about the uncommitted file.
 
       - name: Configure Docker using gcloud
         # This step uses gcloud to configure docker credentials to access GCR
@@ -261,19 +262,15 @@ jobs:
         # experimental features are enabled, hence the features are enabled
         # in this flag.
         run: |
-          git status
           gcloud auth configure-docker
           tmp=$(mktemp)
           sudo jq '.+{experimental:true}' /etc/docker/daemon.json > "$tmp"
           sudo mv "$tmp" /etc/docker/daemon.json
           sudo systemctl restart docker.service
-          echo "----------------"
-          git status
 
       - name: Build and Publish Docker Images
         run: |
           cd ./scripts/docker/
-          git status
           python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
           # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }} --gcr-project ${{ secrets.GCP_PROJECT_ID }}
 
