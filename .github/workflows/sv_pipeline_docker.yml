@@ -250,6 +250,8 @@ jobs:
           # automatically use this environment variable to find credentials.
           # xref: https://github.com/google-github-actions/setup-gcloud#inputs
           export_default_credentials: true
+        run: |
+          git status
 
       - name: Configure Docker using gcloud
         # This step uses gcloud to configure docker credentials to access GCR
