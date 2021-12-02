@@ -207,8 +207,8 @@ jobs:
       - name: Run build_docker.py
         run: |
           cd ./scripts/docker/
-          # python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }}
-          python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args_job.outputs.images_tag }}
+          python build_docker.py --targets sv-base-mini --image-tag ${{ needs.build_args_job.outputs.images_tag }}
+          # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args_job.outputs.images_tag }}
           # python build_docker.py --targets ${{ needs.build_args_job.outputs.target_images }} --image-tag ${{ needs.build_args.outputs.images_tag }}
 
   publish_job:
@@ -287,7 +287,6 @@ jobs:
           git config --global user.email 'aaaaaabbbbbaaaaaaa@users.noreply.github.com'
           git commit -am "Automated report"
           git push
-          
           
 
 
