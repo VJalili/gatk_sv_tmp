@@ -240,7 +240,7 @@ jobs:
           git status
 
       - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@master
+        uses: google-github-actions/setup-gcloud@v0.3.0
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_GCR_SA_KEY }}
